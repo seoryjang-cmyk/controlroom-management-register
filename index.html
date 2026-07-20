@@ -253,6 +253,20 @@
   .sev-low{background:#EAF3DE;color:#3B6D11;}
   .sev-mid{background:#FAEEDA;color:#854F0B;}
   .sev-high{background:#FCEBEB;color:#791F1F;}
+  .issue-status-select{
+    height:32px;border-radius:7px;font-size:12px;font-weight:700;font-family:inherit;
+    padding:0 8px;cursor:pointer;border:1px solid var(--lg-gray-300);background:#fff;color:var(--lg-gray-900);
+  }
+  .issue-status-select.st-open{border-color:var(--lg-gray-300);color:var(--status-wait-text);background:var(--status-wait-bg);}
+  .issue-status-select.st-inprogress{border-color:#E3A419;color:#8A5A00;background:#FDF1DC;}
+  .issue-status-select.st-resolved{border-color:#3B6D11;color:#3B6D11;background:#EAF3DE;}
+  .issue-status-select.st-unresolvable{border-color:#4B3F91;color:#4B3F91;background:#ECEAF6;}
+  .issue-comment-input{
+    width:100%;min-width:150px;min-height:34px;border:1px solid var(--lg-gray-300);border-radius:7px;
+    padding:6px 9px;font-size:12.5px;font-family:inherit;resize:vertical;white-space:normal;color:var(--lg-gray-900);
+  }
+  .issue-comment-input:focus{outline:none;border-color:var(--lg-red);box-shadow:0 0 0 3px var(--lg-red-light);}
+  .issue-comment-input::placeholder{color:var(--lg-gray-500);}
   .issue-section-title{
     font-size:15px;font-weight:700;margin:32px 0 14px;display:flex;align-items:center;gap:8px;
   }
@@ -313,6 +327,43 @@
   .req-done{background:var(--status-done-bg);color:var(--status-done-text);}
   .req-done:before{background:var(--status-done-text);}
   .req-row-done{opacity:0.6;}
+
+  /* guide */
+  .guide-subtab-nav{
+    display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;
+  }
+  .guide-subtab-btn{
+    padding:10px 20px;border-radius:10px;font-size:13.5px;font-weight:700;
+    border:1px solid var(--lg-gray-300);background:#fff;color:var(--lg-gray-700);
+    cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:8px;
+  }
+  .guide-subtab-btn.active{background:var(--lg-red);border-color:var(--lg-red);color:#fff;}
+  .guide-subtab-panel{display:none;}
+  .guide-subtab-panel.active{display:block;}
+  .guide-card{
+    background:var(--lg-white);border:1px solid var(--lg-gray-300);border-radius:14px;
+    padding:26px 28px;
+  }
+  .guide-card .guide-title{
+    font-size:16px;font-weight:700;margin:0 0 4px;display:flex;align-items:center;gap:8px;
+  }
+  .guide-card .guide-title:before{
+    content:"";width:4px;height:16px;background:var(--lg-red);border-radius:2px;display:inline-block;
+  }
+  .guide-card .guide-sub{font-size:12.5px;color:var(--lg-gray-500);margin:0 0 20px;}
+  .guide-step{
+    display:flex;gap:14px;padding:16px 4px;border-bottom:1px solid var(--lg-gray-100);
+  }
+  .guide-step:last-of-type{border-bottom:none;}
+  .guide-step .num{
+    flex-shrink:0;width:28px;height:28px;border-radius:50%;background:var(--lg-red-light);
+    color:var(--lg-red);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;
+  }
+  .guide-step .content{flex:1;}
+  .guide-step .content .cond{font-size:13.5px;font-weight:700;color:var(--lg-gray-900);margin-bottom:4px;}
+  .guide-step .content .action{font-size:13px;color:var(--lg-gray-700);line-height:1.55;}
+  .guide-step.escalate .num{background:#FCEBEB;color:#791F1F;}
+  .guide-step.escalate .cond{color:#791F1F;}
 
   /* modal */
   .overlay{
@@ -377,6 +428,7 @@
   <div class="tab-nav">
     <button class="tab-btn active" id="tab-btn-logs" onclick="switchTab('logs')">사용 기록</button>
     <button class="tab-btn" id="tab-btn-issues" onclick="switchTab('issues')">이슈 현황</button>
+    <button class="tab-btn" id="tab-btn-guide" onclick="switchTab('guide')">해결 가이드</button>
     <button class="tab-btn" id="tab-btn-requests" onclick="switchTab('requests')">관리자 요청</button>
   </div>
 
@@ -455,7 +507,9 @@
     <select id="filter-issue-status">
       <option value="">전체</option>
       <option value="open">미해결</option>
+      <option value="inprogress">해결중</option>
       <option value="resolved">해결완료</option>
+      <option value="unresolvable">해결불가</option>
     </select>
     <div class="spacer"></div>
     <span class="count" id="issue-row-count"></span>
@@ -469,13 +523,109 @@
           <th>조직명 / 사용자</th>
           <th>심각도</th>
           <th>내용</th>
+          <th>관리자 코멘트</th>
           <th>등록시각</th>
+          <th>상태</th>
           <th style="text-align:right;">처리</th>
         </tr>
       </thead>
       <tbody id="issue-board-body"></tbody>
     </table>
     <div class="empty" id="issue-empty-state" style="display:none;">등록된 이슈가 없습니다.</div>
+  </div>
+
+  </div>
+
+  <div class="tab-panel" id="tab-panel-guide">
+
+  <div class="guide-subtab-nav">
+    <button class="guide-subtab-btn active" id="guide-subtab-btn-mic" onclick="switchGuideSubtab('mic')">🎤 마이크</button>
+    <button class="guide-subtab-btn" id="guide-subtab-btn-beam" onclick="switchGuideSubtab('beam')">📽 빔</button>
+    <button class="guide-subtab-btn" id="guide-subtab-btn-laptop" onclick="switchGuideSubtab('laptop')">💻 노트북</button>
+  </div>
+
+  <div class="guide-subtab-panel active" id="guide-subtab-panel-mic">
+    <div class="guide-card">
+      <p class="guide-title">마이크 문제 해결 가이드</p>
+      <p class="guide-sub">마이크 관련 이상 발생 시 아래 순서대로 확인해 주세요.</p>
+      <div class="guide-step">
+        <div class="num">1</div>
+        <div class="content">
+          <div class="cond">마이크가 안될 때</div>
+          <div class="action">마이크의 배터리 체크</div>
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="num">2</div>
+        <div class="content">
+          <div class="cond">배터리 확인 후에도 안될 때</div>
+          <div class="action">믹서 장비의 W/L Mic 레벨을 올렸는지 확인</div>
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="num">3</div>
+        <div class="content">
+          <div class="cond">마이크 수신기에서 불빛이 깜빡거릴 경우</div>
+          <div class="action">마이크와 수신기의 싱크를 재설정</div>
+        </div>
+      </div>
+      <div class="guide-step escalate">
+        <div class="num">!</div>
+        <div class="content">
+          <div class="cond">이외에도 안 나올 경우</div>
+          <div class="action">영상담당자 호출</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="guide-subtab-panel" id="guide-subtab-panel-beam">
+    <div class="guide-card">
+      <p class="guide-title">빔 프로젝터 문제 해결 가이드</p>
+      <p class="guide-sub">빔 연결 관련 이상 발생 시 아래 순서대로 확인해 주세요.</p>
+      <div class="guide-step">
+        <div class="num">1</div>
+        <div class="content">
+          <div class="cond">빔이 연결이 안되거나 깜빡거릴 경우</div>
+          <div class="action">노트북의 주사율을 59.940Hz로 설정</div>
+        </div>
+      </div>
+      <div class="guide-step escalate">
+        <div class="num">!</div>
+        <div class="content">
+          <div class="cond">이외에도 연결이 안될 경우</div>
+          <div class="action">영상담당자 호출</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="guide-subtab-panel" id="guide-subtab-panel-laptop">
+    <div class="guide-card">
+      <p class="guide-title">노트북 문제 해결 가이드</p>
+      <p class="guide-sub">노트북 영상/음향 관련 이상 발생 시 아래 순서대로 확인해 주세요.</p>
+      <div class="guide-step">
+        <div class="num">1</div>
+        <div class="content">
+          <div class="cond">노트북의 영상 소리가 안 나올 경우</div>
+          <div class="action">믹서 장비에서 Mini4K 기기 장비를 ON </div>
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="num">2</div>
+        <div class="content">
+          <div class="cond">이어서 확인할 사항</div>
+          <div class="action">Tricaster의 화면이 나오도록 설정</div>
+        </div>
+      </div>
+      <div class="guide-step escalate">
+        <div class="num">!</div>
+        <div class="content">
+          <div class="cond">이외에도 소리가 안 나올 경우</div>
+          <div class="action">영상담당자 호출</div>
+        </div>
+      </div>
+    </div>
   </div>
 
   </div>
@@ -587,6 +737,16 @@ const SEVERITY_META = {
   high:{cls:'sev-high', label:'심각'}
 };
 
+const ISSUE_STATUS_META = {
+  open:{cls:'st-open', label:'미해결'},
+  inprogress:{cls:'st-inprogress', label:'해결중'},
+  resolved:{cls:'st-resolved', label:'해결완료'},
+  unresolvable:{cls:'st-unresolvable', label:'해결불가'}
+};
+function isIssueActive(is){
+  return is.status==='open' || is.status==='inprogress';
+}
+
 const PRE_ITEMS = [
   {key:'mic', label:'해당 강의실 마이크를 수령했나요?'},
   {key:'battery', label:'마이크 배터리를 확인했나요?'},
@@ -613,18 +773,32 @@ function nowTimeStr(){
 
 function switchTab(tab){
   currentTab = tab;
-  ['logs','issues','requests'].forEach(t=>{
+  ['logs','issues','guide','requests'].forEach(t=>{
     document.getElementById('tab-panel-'+t).classList.toggle('active', t===tab);
     document.getElementById('tab-btn-'+t).classList.toggle('active', t===tab);
   });
 }
 window.switchTab = switchTab;
 
+function switchGuideSubtab(sub){
+  ['mic','beam','laptop'].forEach(s=>{
+    document.getElementById('guide-subtab-panel-'+s).classList.toggle('active', s===sub);
+    document.getElementById('guide-subtab-btn-'+s).classList.toggle('active', s===sub);
+  });
+}
+window.switchGuideSubtab = switchGuideSubtab;
+
 function loadLogs(){
   onSnapshot(logsDocRef, (snap)=>{
     const data = snap.exists() ? snap.data() : null;
     logs = data && Array.isArray(data.items) ? data.items : [];
-    logs.forEach(l=>{ if(!Array.isArray(l.issues)) l.issues=[]; });
+    logs.forEach(l=>{
+      if(!Array.isArray(l.issues)) l.issues=[];
+      l.issues.forEach(is=>{
+        if(!is.status){ is.status = is.resolved ? 'resolved' : 'open'; }
+        if(is.comment===undefined) is.comment='';
+      });
+    });
     render();
   }, (err)=>{
     console.error(err);
@@ -755,7 +929,7 @@ function render(){
       }else{
         actionHtml = `<button class="action-btn" disabled>완료됨</button>`;
       }
-      const openIssueCount = (l.issues||[]).filter(is=>!is.resolved).length;
+      const openIssueCount = (l.issues||[]).filter(isIssueActive).length;
       return `<tr>
         <td>${l.date}</td>
         <td>${escapeHtml(l.org)}</td>
@@ -782,7 +956,7 @@ function render(){
   const waitCount = logs.filter(l=>l.status==='wait').length;
   const useCount = logs.filter(l=>l.status==='use').length;
   const doneCount = logs.filter(l=>l.status==='done').length;
-  const openIssueTotal = logs.reduce((sum,l)=>sum+(l.issues||[]).filter(is=>!is.resolved).length,0);
+  const openIssueTotal = logs.reduce((sum,l)=>sum+(l.issues||[]).filter(isIssueActive).length,0);
   document.getElementById('summary').innerHTML = `
     <div class="summary-chip"><span class="num">${waitCount}</span><span class="label">대기</span></div>
     <div class="summary-chip"><span class="num">${useCount}</span><span class="label">사용중</span></div>
@@ -795,7 +969,7 @@ function render(){
 }
 
 function updateTabBadges(){
-  const openIssueTotal = logs.reduce((sum,l)=>sum+(l.issues||[]).filter(is=>!is.resolved).length,0);
+  const openIssueTotal = logs.reduce((sum,l)=>sum+(l.issues||[]).filter(isIssueActive).length,0);
   const pendingReqTotal = requests.filter(r=>r.status==='pending').length;
   const issuesBtn = document.getElementById('tab-btn-issues');
   const requestsBtn = document.getElementById('tab-btn-requests');
@@ -871,8 +1045,7 @@ function renderIssueBoard(){
   if(!body) return;
   let all = getAllIssuesFlat();
   all = all.filter(is=>{
-    if(filterIssueStatus==='open') return !is.resolved;
-    if(filterIssueStatus==='resolved') return is.resolved;
+    if(filterIssueStatus) return is.status===filterIssueStatus;
     return true;
   });
   document.getElementById('issue-row-count').textContent = all.length+'건';
@@ -884,20 +1057,24 @@ function renderIssueBoard(){
     empty.style.display='none';
     body.innerHTML = all.map(is=>{
       const sev = SEVERITY_META[is.severity] || SEVERITY_META.mid;
-      return `<tr class="${is.resolved?'issue-row-resolved':''}">
+      const stMeta = ISSUE_STATUS_META[is.status] || ISSUE_STATUS_META.open;
+      return `<tr class="${is.status==='resolved'?'issue-row-resolved':''}">
         <td>${is.date}</td>
         <td><span class="room-badge">${is.room}</span></td>
         <td>${escapeHtml(is.org)} / ${escapeHtml(is.user)}</td>
         <td><span class="sev-badge ${sev.cls}">${sev.label}</span></td>
-        <td style="white-space:normal;max-width:280px;">${escapeHtml(is.text)}</td>
+        <td style="white-space:normal;max-width:220px;">${escapeHtml(is.text)}</td>
+        <td style="white-space:normal;max-width:220px;">
+          <textarea class="issue-comment-input" placeholder="처리 내용을 입력하세요" onblur="saveIssueComment('${is.logId}','${is.id}', this.value)">${escapeHtml(is.comment||'')}</textarea>
+        </td>
         <td>${is.time||'-'}</td>
+        <td>
+          <select class="issue-status-select ${stMeta.cls}" onchange="setIssueStatus('${is.logId}','${is.id}', this.value)">
+            ${Object.keys(ISSUE_STATUS_META).map(key=>`<option value="${key}" ${is.status===key?'selected':''}>${ISSUE_STATUS_META[key].label}</option>`).join('')}
+          </select>
+        </td>
         <td style="text-align:right;">
-          <div style="display:flex;gap:8px;justify-content:flex-end;align-items:center;">
-            <button class="resolve-toggle ${is.resolved?'resolved':''}" onclick="toggleIssueResolved('${is.logId}','${is.id}')">
-              ${is.resolved?'해결완료':'미해결'}
-            </button>
-            <button class="del-btn" title="삭제" onclick="deleteIssue('${is.logId}','${is.id}')">&times;</button>
-          </div>
+          <button class="del-btn" title="삭제" onclick="deleteIssue('${is.logId}','${is.id}')">&times;</button>
         </td>
       </tr>`;
     }).join('');
@@ -913,15 +1090,27 @@ window.deleteIssue = async function(logId, issueId){
   if(modalState && modalState.logId===logId && modalState.phase==='issue') renderModal();
 }
 
-window.toggleIssueResolved = async function(logId, issueId){
+window.setIssueStatus = async function(logId, issueId, status){
   const log = logs.find(l=>l.id===logId);
   if(!log) return;
   const issue = (log.issues||[]).find(is=>is.id===issueId);
   if(!issue) return;
-  issue.resolved = !issue.resolved;
+  issue.status = status;
+  issue.resolved = (status==='resolved');
   await saveLogs();
   render();
   if(modalState && modalState.logId===logId) renderModal();
+}
+
+window.saveIssueComment = async function(logId, issueId, commentText){
+  const log = logs.find(l=>l.id===logId);
+  if(!log) return;
+  const issue = (log.issues||[]).find(is=>is.id===issueId);
+  if(!issue) return;
+  if(issue.comment===commentText) return;
+  issue.comment = commentText;
+  await saveLogs();
+  showToast('코멘트가 저장되었습니다.');
 }
 
 function escapeHtml(str){
@@ -1048,16 +1237,19 @@ function renderIssueModal(root, log){
       <div style="max-height:220px;overflow-y:auto;">
         ${issues.length===0 ? '<div class="issue-empty">등록된 이슈가 없습니다.</div>' : issues.map(is=>{
           const sev = SEVERITY_META[is.severity] || SEVERITY_META.mid;
+          const stMeta = ISSUE_STATUS_META[is.status] || ISSUE_STATUS_META.open;
           return `<div class="issue-list-item">
             <div class="meta">
               <span class="sev-badge ${sev.cls}">${sev.label}</span>
               <span class="time">${is.time||''}</span>
             </div>
             <div class="text">${escapeHtml(is.text)}</div>
-            <div style="margin-top:8px;display:flex;justify-content:flex-end;gap:8px;">
-              <button class="resolve-toggle ${is.resolved?'resolved':''}" onclick="toggleIssueResolved('${log.id}','${is.id}')">
-                ${is.resolved?'해결완료':'미해결'}
-              </button>
+            <label style="display:block;font-size:11px;color:var(--lg-gray-500);margin:10px 0 4px;font-weight:500;">관리자 코멘트</label>
+            <textarea class="issue-comment-input" placeholder="처리 내용을 입력하세요" onblur="saveIssueComment('${log.id}','${is.id}', this.value)">${escapeHtml(is.comment||'')}</textarea>
+            <div style="margin-top:8px;display:flex;justify-content:flex-end;gap:8px;align-items:center;">
+              <select class="issue-status-select ${stMeta.cls}" onchange="setIssueStatus('${log.id}','${is.id}', this.value)">
+                ${Object.keys(ISSUE_STATUS_META).map(key=>`<option value="${key}" ${is.status===key?'selected':''}>${ISSUE_STATUS_META[key].label}</option>`).join('')}
+              </select>
               <button class="del-btn" title="삭제" onclick="deleteIssue('${log.id}','${is.id}')">&times;</button>
             </div>
           </div>`;
@@ -1102,7 +1294,9 @@ function renderIssueModal(root, log){
       text,
       severity: modalState.draftSeverity||'mid',
       time: nowTimeStr(),
-      resolved:false
+      status:'open',
+      resolved:false,
+      comment:''
     });
     await saveLogs();
     modalState.draftText='';
