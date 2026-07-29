@@ -1,0 +1,26 @@
+{
+  "name": "컨트롤룸 관리 대장",
+  "short_name": "컨트롤룸 대장",
+  "description": "306호 · 308호 스튜디오 컨트롤룸 장비 사용 이력 및 체크리스트 관리",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#F4F4F4",
+  "theme_color": "#A50034",
+  "lang": "ko",
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
