@@ -99,6 +99,9 @@
     gap:14px;
     align-items:end;
   }
+  .field{
+    min-width:0;
+  }
   .field label{
     display:block;
     font-size:12px;
@@ -108,6 +111,7 @@
   }
   .field input, .field select{
     width:100%;
+    min-width:0;
     height:40px;
     border:1px solid var(--lg-gray-300);
     border-radius:8px;
@@ -449,6 +453,13 @@
     .form-grid{grid-template-columns:1fr 1fr;}
     .form-grid-log{grid-template-columns:1fr 1fr;}
     .table-wrap{overflow-x:auto;}
+  }
+  @media(max-width:480px){
+    .form-grid{grid-template-columns:1fr;}
+    .form-grid-log{grid-template-columns:1fr;}
+    .field input, .field select{min-width:0;}
+    .header{padding:22px 20px;}
+    .card{padding:20px 18px;}
   }
 </style>
 </head>
