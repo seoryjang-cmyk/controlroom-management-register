@@ -4,6 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>컨트롤룸 관리 대장</title>
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#A50034">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="컨트롤룸 대장">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<link rel="icon" href="./icon-192.png">
+
 <style>
   :root{
     --lg-red:#A50034;
@@ -81,6 +90,12 @@
   .form-grid{
     display:grid;
     grid-template-columns:repeat(4,1fr);
+    gap:14px;
+    align-items:end;
+  }
+  .form-grid-log{
+    display:grid;
+    grid-template-columns:repeat(6,1fr);
     gap:14px;
     align-items:end;
   }
@@ -239,9 +254,31 @@
   }
   .issue-btn:hover{background:var(--lg-gray-100);}
   .issue-btn.has-issue{border-color:#A32D2D;color:#A32D2D;}
+  .req-btn{
+    position:relative;
+    padding:7px 12px;
+    border-radius:7px;
+    font-size:12px;
+    font-weight:700;
+    border:1px solid var(--lg-gray-300);
+    background:#fff;
+    color:var(--lg-gray-700);
+    cursor:pointer;
+    font-family:inherit;
+  }
+  .req-btn:hover{background:var(--lg-gray-100);}
+  .req-btn.has-req{border-color:#8A5A00;color:#8A5A00;}
   .issue-count{
     position:absolute;top:-7px;right:-7px;
     background:#A32D2D;color:#fff;
+    font-size:10px;font-weight:700;
+    min-width:16px;height:16px;border-radius:8px;
+    display:flex;align-items:center;justify-content:center;
+    padding:0 3px;
+  }
+  .req-count{
+    position:absolute;top:-7px;right:-7px;
+    background:#8A5A00;color:#fff;
     font-size:10px;font-weight:700;
     min-width:16px;height:16px;border-radius:8px;
     display:flex;align-items:center;justify-content:center;
@@ -410,6 +447,7 @@
 
   @media(max-width:720px){
     .form-grid{grid-template-columns:1fr 1fr;}
+    .form-grid-log{grid-template-columns:1fr 1fr;}
     .table-wrap{overflow-x:auto;}
   }
 </style>
@@ -436,10 +474,14 @@
 
   <div class="card">
     <h2>신규 사용 등록</h2>
-    <div class="form-grid">
+    <div class="form-grid-log">
       <div class="field">
-        <label>일자</label>
-        <input type="date" id="in-date">
+        <label>시작일</label>
+        <input type="date" id="in-date-start">
+      </div>
+      <div class="field">
+        <label>종료일</label>
+        <input type="date" id="in-date-end">
       </div>
       <div class="field">
         <label>조직명</label>
@@ -456,9 +498,9 @@
           <option value="308호">308호</option>
         </select>
       </div>
-    </div>
-    <div style="margin-top:14px;text-align:right;">
-      <button class="btn-primary" id="add-btn" style="padding:0 22px;">등록하기</button>
+      <div class="field">
+        <button class="btn-primary" id="add-btn" style="width:100%;">등록하기</button>
+      </div>
     </div>
   </div>
 
@@ -482,7 +524,7 @@
     <table>
       <thead>
         <tr>
-          <th>일자</th>
+          <th>사용 기간</th>
           <th>조직명</th>
           <th>사용자</th>
           <th>강의실</th>
@@ -729,7 +771,7 @@ let filterStatus = '';
 let filterIssueStatus = '';
 let filterReqStatus = '';
 let currentTab = 'logs';
-let modalState = null; // {logId, phase:'pre'|'post'|'issue', checks:{}}
+let modalState = null; // {logId, phase:'pre'|'post'|'issue'|'req', checks:{}}
 
 const SEVERITY_META = {
   low:{cls:'sev-low', label:'경미'},
@@ -763,12 +805,19 @@ function todayStr(){
   const d = new Date();
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 }
-document.getElementById('in-date').value = todayStr();
+document.getElementById('in-date-start').value = todayStr();
+document.getElementById('in-date-end').value = todayStr();
 document.getElementById('req-in-date').value = todayStr();
 
 function nowTimeStr(){
   const d = new Date();
   return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+}
+
+function formatDateRange(start, end){
+  if(!start) return '-';
+  if(!end || end===start) return start;
+  return start+' ~ '+end;
 }
 
 function switchTab(tab){
@@ -798,6 +847,8 @@ function loadLogs(){
         if(!is.status){ is.status = is.resolved ? 'resolved' : 'open'; }
         if(is.comment===undefined) is.comment='';
       });
+      if(!l.dateStart){ l.dateStart = l.date || ''; }
+      if(!l.dateEnd){ l.dateEnd = l.dateStart; }
     });
     render();
   }, (err)=>{
@@ -843,17 +894,23 @@ function showToast(msg){
 }
 
 document.getElementById('add-btn').addEventListener('click', async ()=>{
-  const date = document.getElementById('in-date').value;
+  const dateStart = document.getElementById('in-date-start').value;
+  const dateEnd = document.getElementById('in-date-end').value;
   const org = document.getElementById('in-org').value.trim();
   const user = document.getElementById('in-user').value.trim();
   const room = document.getElementById('in-room').value;
-  if(!date || !org || !user){
-    showToast('일자, 조직명, 사용자를 모두 입력해 주세요.');
+  if(!dateStart || !dateEnd || !org || !user){
+    showToast('시작일, 종료일, 조직명, 사용자를 모두 입력해 주세요.');
+    return;
+  }
+  if(dateEnd < dateStart){
+    showToast('종료일은 시작일보다 빠를 수 없습니다.');
     return;
   }
   const entry = {
     id: 'log_'+Date.now(),
-    date, org, user, room,
+    dateStart, dateEnd,
+    org, user, room,
     status:'wait',
     pre:{mic:false,battery:false,mixerOn:false,volume:false},
     post:{volumeDown:false,mixerOff:false,micReturn:false},
@@ -864,6 +921,8 @@ document.getElementById('add-btn').addEventListener('click', async ()=>{
   await saveLogs();
   document.getElementById('in-org').value='';
   document.getElementById('in-user').value='';
+  document.getElementById('in-date-start').value = todayStr();
+  document.getElementById('in-date-end').value = todayStr();
   render();
   showToast('사용 등록이 완료되었습니다.');
 });
@@ -930,8 +989,9 @@ function render(){
         actionHtml = `<button class="action-btn" disabled>완료됨</button>`;
       }
       const openIssueCount = (l.issues||[]).filter(isIssueActive).length;
+      const linkedReqCount = requests.filter(r=>r.logId===l.id).length;
       return `<tr>
-        <td>${l.date}</td>
+        <td>${formatDateRange(l.dateStart, l.dateEnd)}</td>
         <td>${escapeHtml(l.org)}</td>
         <td>${escapeHtml(l.user)}</td>
         <td><span class="room-badge">${l.room}</span></td>
@@ -945,6 +1005,9 @@ function render(){
         </td>
         <td style="text-align:right;">
           <div style="display:flex;gap:8px;justify-content:flex-end;align-items:center;">
+            <button class="req-btn ${linkedReqCount>0?'has-req':''}" onclick="openModal('${l.id}','req')">
+              관리자 요청${linkedReqCount>0?`<span class="req-count">${linkedReqCount}</span>`:''}
+            </button>
             ${actionHtml}
             <button class="del-btn" title="삭제" onclick="deleteLog('${l.id}')">&times;</button>
           </div>
@@ -1032,7 +1095,7 @@ function getAllIssuesFlat(){
   const flat = [];
   logs.forEach(l=>{
     (l.issues||[]).forEach(is=>{
-      flat.push({...is, logId:l.id, date:l.date, room:l.room, org:l.org, user:l.user});
+      flat.push({...is, logId:l.id, date:l.dateStart, room:l.room, org:l.org, user:l.user});
     });
   });
   flat.sort((a,b)=> (b.time||'').localeCompare(a.time||''));
@@ -1133,6 +1196,11 @@ window.openModal = function(logId, phase){
     renderModal();
     return;
   }
+  if(phase==='req'){
+    modalState = {logId, phase:'req', draftText:''};
+    renderModal();
+    return;
+  }
   const items = phase==='pre' ? PRE_ITEMS : POST_ITEMS;
   const checkState = {};
   items.forEach(it=>checkState[it.key]=false);
@@ -1146,6 +1214,10 @@ function renderModal(){
   const log = logs.find(l=>l.id===modalState.logId);
   if(modalState.phase==='issue'){
     renderIssueModal(root, log);
+    return;
+  }
+  if(modalState.phase==='req'){
+    renderReqModal(root, log);
     return;
   }
   const items = modalState.phase==='pre' ? PRE_ITEMS : POST_ITEMS;
@@ -1306,6 +1378,78 @@ function renderIssueModal(root, log){
   });
 }
 
+function renderReqModal(root, log){
+  const linked = requests.filter(r=>r.logId===log.id).slice().sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
+  const sub = `${log.room} · ${log.org} · ${log.user}`;
+
+  root.innerHTML = `
+  <div class="overlay" id="modal-overlay">
+    <div class="modal" style="max-width:460px;">
+      <div class="modal-head">
+        <div>
+          <span class="tag">관리자 요청</span>
+          <h3>이 사용 건에 대해 요청하기</h3>
+          <p class="sub">${escapeHtml(sub)}</p>
+        </div>
+        <button class="modal-close" id="modal-close-btn">&times;</button>
+      </div>
+
+      <div style="max-height:180px;overflow-y:auto;">
+        ${linked.length===0 ? '<div class="issue-empty">등록된 요청이 없습니다.</div>' : linked.map(r=>{
+          const isDone = r.status==='done';
+          return `<div class="issue-list-item">
+            <div class="meta">
+              <span class="req-status-badge ${isDone?'req-done':'req-pending'}">${isDone?'처리완료':'대기'}</span>
+              <span class="time">${r.createdAt||''}</span>
+            </div>
+            <div class="text">${escapeHtml(r.text)}</div>
+          </div>`;
+        }).join('')}
+      </div>
+
+      <div class="issue-form" style="margin-top:14px;border-top:1px solid var(--lg-gray-300);padding-top:14px;">
+        <label style="display:block;font-size:12px;color:var(--lg-gray-700);margin-bottom:6px;font-weight:500;">요청 내용</label>
+        <textarea id="req-text-input" placeholder="관리자에게 전달할 내용을 입력하세요">${escapeHtml(modalState.draftText||'')}</textarea>
+        <div class="issue-form-row">
+          <button class="btn-primary" id="req-modal-add-btn" style="flex:1;">요청 등록</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+
+  document.getElementById('modal-close-btn').addEventListener('click', closeModal);
+  document.getElementById('modal-overlay').addEventListener('click', (e)=>{
+    if(e.target.id==='modal-overlay') closeModal();
+  });
+  document.getElementById('req-text-input').addEventListener('input', e=>{
+    modalState.draftText = e.target.value;
+  });
+  document.getElementById('req-modal-add-btn').addEventListener('click', async ()=>{
+    const text = (modalState.draftText||'').trim();
+    if(!text){
+      showToast('요청 내용을 입력해 주세요.');
+      return;
+    }
+    const currentLog = logs.find(l=>l.id===modalState.logId);
+    requests.unshift({
+      id:'req_'+Date.now(),
+      logId: currentLog.id,
+      date: currentLog.dateStart,
+      org: currentLog.org,
+      user: currentLog.user,
+      room: currentLog.room,
+      text,
+      status:'pending',
+      createdAt: nowTimeStr()
+    });
+    await saveRequests();
+    modalState.draftText='';
+    render();
+    renderModal();
+    showToast('관리자에게 요청이 등록되었습니다.');
+  });
+}
+
 function closeModal(){
   modalState = null;
   document.getElementById('modal-root').innerHTML='';
@@ -1314,6 +1458,14 @@ function closeModal(){
 
 loadLogs();
 loadRequests();
+</script>
+
+<script>
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', ()=>{
+      navigator.serviceWorker.register('./sw.js').catch(()=>{});
+    });
+  }
 </script>
 </body>
 </html>
